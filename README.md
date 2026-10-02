@@ -2,14 +2,16 @@
 
 **Mesa 26.2 for 32-bit (AArch32) Nintendo Switch programs**
 
+**If you don't know whether you need this, stick to [mesa32](https://github.com/aks796/mesa32)**
+(Mesa 20.1), which the released ports are built with.
+
 OpenGL, OpenGL ES 1/2/3 and EGL for 32-bit Switch programs, on the Tegra X1
 GPU through Mesa's Gallium Nouveau driver.
 
 This is a fork of [danfromtico's mesa-switch](https://github.com/danfromtico/mesa-switch)
 (Mesa 26.2.3, with its own Horizon GPU backend in place of libdrm_nouveau),
 built as AArch32. It builds with [libnx32](https://github.com/aks796/libnx32)
-in vita2hos's AArch32 toolchain image. For Mesa 20.1 with libdrm_nouveau, see
-[mesa32](https://github.com/aks796/mesa32).
+in vita2hos's AArch32 toolchain image.
 
 It runs on hardware in several 32-bit ports of Android games, for GLES 1, 2
 and 3, through [android32](https://github.com/aks796/android32).

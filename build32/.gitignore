@@ -1,0 +1,6 @@
+/work/
+/prefix/
+/pydeps/
+/pkgconfig-empty/
+*.log
+/linktest/*.elf

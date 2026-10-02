@@ -1313,6 +1313,12 @@ switch_st_get_param(struct pipe_frontend_screen *fscreen, enum st_manager_param 
     return 0;
 }
 
+/* mesa-switch32: called on a context's glthread worker once, when it
+ * starts; the program may define it (to set the worker's priority and
+ * cores), as with mesa32's (Mesa 20.1's) switch_egl_start_glthread.
+ */
+void switch_egl_glthread_hook(void) __attribute__((weak));
+
 static void
 switch_st_set_background_context(struct st_context *st,
                                  struct util_queue_monitoring *queue_info)
@@ -1320,12 +1326,22 @@ switch_st_set_background_context(struct st_context *st,
     /* GLthread requires this callback before unmarshalling its first batch. */
     (void)st;
     (void)queue_info;
+    if (switch_egl_glthread_hook)
+        switch_egl_glthread_hook();
 }
 
+/* mesa-switch32: glthread is off unless asked for, per context
+ * (switch_egl_start_glthread) or for every context (MESA_GLTHREAD=true), as
+ * in mesa32 (Mesa 20.1). Programs ported from Android expect a driver that
+ * runs on their own thread: glthread copies every enabled client-side vertex
+ * array at each draw, including ones the current fixed-function state does
+ * not read, so a stale pointer left enabled is read past its end (Labyrinth
+ * 2's split screen: a stack array, read into the unmapped page above it).
+ */
 static bool
 switch_glthread_requested(void)
 {
-    bool enabled = true;
+    bool enabled = false;
 
     if (os_get_option("mesa_glthread"))
         enabled = debug_get_bool_option("mesa_glthread", enabled);
@@ -2278,6 +2294,34 @@ static _EGLProc
 switch_get_proc_address(const char *procname)
 {
     return _mesa_glapi_get_proc_address(procname);
+}
+
+/*
+ * mesa-switch32: start glthread for one context, as mesa32's (Mesa 20.1's)
+ * Switch EGL did (the Asphalt 8 port). Call it before the context is first
+ * made current, from the thread that will use it. EGL_TRUE when glthread
+ * runs for the context (also when it already did).
+ */
+PUBLIC EGLBoolean
+switch_egl_start_glthread(EGLDisplay dpy_handle, EGLContext ctx_handle);
+
+PUBLIC EGLBoolean
+switch_egl_start_glthread(EGLDisplay dpy_handle, EGLContext ctx_handle)
+{
+    _EGLDisplay *disp = _eglLockDisplay(dpy_handle);
+    if (!disp)
+        return EGL_FALSE;
+    _EGLContext *ctx = _eglLookupContext(ctx_handle, disp);
+    struct switch_egl_context *context = ctx ? switch_egl_context(ctx) : NULL;
+    EGLBoolean ok = EGL_FALSE;
+    if (context && context->st && context->st->ctx) {
+        struct gl_context *gl = context->st->ctx;
+        if (!gl->GLThread.enabled)
+            _mesa_glthread_init(gl);
+        ok = gl->GLThread.enabled ? EGL_TRUE : EGL_FALSE;
+    }
+    _eglUnlockDisplay(disp);
+    return ok;
 }
 
 /* Required eglWaitClient/eglWaitGL hook: finish rendering for the current

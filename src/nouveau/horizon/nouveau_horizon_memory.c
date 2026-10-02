@@ -15,6 +15,17 @@
 #include <malloc.h>
 #include <string.h>
 
+/* NvMap's kind, read as its first byte. NvMap::kind is an enum: libnx32
+ * (AArch32) is built with short enums, so the field is one byte there, while
+ * Mesa is built with int-sized enums and nvMapGetKind() would read four,
+ * taking in the bools after it. Every kind fits in a byte, and the field's
+ * offset is the same either way. */
+static inline uint8_t
+nouveau_horizon_nvmap_kind(const NvMap *map)
+{
+   return *(const uint8_t *)&map->kind;
+}
+
 /* Defined with the backing-store cache below; the identity release path
  * needs it first. */
 static bool
@@ -742,7 +753,7 @@ nouveau_horizon_memory_identity_import(
    candidate->align_B = nouveau_horizon_device_bind_align(device);
    candidate->flags =
       import_info->flags & NOUVEAU_HORIZON_MEMORY_IDENTITY_FLAGS;
-   candidate->backing_kind = (uint8_t)nvMapGetKind(&candidate->map);
+   candidate->backing_kind = nouveau_horizon_nvmap_kind(&candidate->map);
    candidate->layout = import_info->layout;
    candidate->imported = true;
 

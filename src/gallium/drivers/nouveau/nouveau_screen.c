@@ -704,8 +704,22 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
    ret = nouveau_client_new(screen->device, &screen->client);
    if (ret)
       goto err;
+#ifdef __SWITCH__
+   /* The command buffers are reused in a ring, and mapping one waits until the
+    * GPU has finished reading it: the ring bounds how far the CPU can run
+    * ahead of the GPU. An emulator's renderer can emit a few MiB of commands
+    * a frame, which with the default ring keeps CPU and GPU in lockstep.
+    */
+   const int pushbuf_count = CLAMP(
+      debug_get_num_option("NOUVEAU_SWITCH_PUSHBUF_COUNT", 4), 2, 64);
+   const uint32_t pushbuf_size = 1024 * CLAMP(
+      debug_get_num_option("NOUVEAU_SWITCH_PUSHBUF_KB", 512), 64, 4096);
+   ret = nouveau_pushbuf_create(screen, NULL, screen->client, screen->channel,
+                                pushbuf_count, pushbuf_size, &screen->pushbuf);
+#else
    ret = nouveau_pushbuf_create(screen, NULL, screen->client, screen->channel,
                                 4, 512 * 1024, &screen->pushbuf);
+#endif
    if (ret)
       goto err;
 

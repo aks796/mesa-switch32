@@ -1,5 +1,6 @@
 /work/
 /prefix/
+/prefix-nvk/
 /pydeps/
 /pkgconfig-empty/
 *.log

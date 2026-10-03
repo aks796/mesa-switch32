@@ -1,0 +1,18 @@
+# Docker.nvk32 -- the 32-bit build image plus what NVK needs: Clang/LLVM
+# with the SPIR-V translator and libclc (for the host tools mesa_clc and
+# vtn_bindgen2), Rust with the 32-bit ARM Linux standard library (NAK, NIL and
+# the other Rust parts are compiled for armv7-unknown-linux-gnueabi, the
+# soft-float EABI our C code also uses, and linked against libnx32's newlib
+# with rust_switch_stubs.c), bindgen and cbindgen.
+#
+#   docker build -f build32/Docker.nvk32 -t mesa32-nvk build32
+FROM ghcr.io/vita2hos/devcontainer/vita2hos:latest
+USER root
+RUN pacman -Syu --noconfirm --needed --disable-sandbox \
+        clang llvm spirv-llvm-translator libclc spirv-tools spirv-headers \
+        rustup rust-bindgen cbindgen python-yaml python-mako python-packaging \
+    && pacman -Scc --noconfirm --disable-sandbox
+USER vita2hos
+RUN rustup toolchain install stable --profile minimal --component rustfmt \
+    && rustup target add armv7-unknown-linux-gnueabi \
+    && rustc --version

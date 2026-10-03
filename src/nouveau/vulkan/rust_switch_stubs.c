@@ -1,5 +1,5 @@
-/* Link compatibility for aarch64-unknown-linux-gnu Rust libraries against
- * Switch/newlib.
+/* Link compatibility for aarch64-unknown-linux-gnu (and, in 32-bit Switch
+ * programs, armv7-unknown-linux-gnueabi) Rust libraries against Switch/newlib.
  */
 
 #if defined(__GNUC__)
@@ -78,6 +78,26 @@ ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
     }
     return total;
 }
+
+#if defined(__arm__)
+/* Rust's prebuilt std for 32-bit ARM reaches its thread-locals through the
+ * general-dynamic model, which ARM's linker does not relax: each access calls
+ * this with a GOT pair (module, offset), the module always 1 here. libnx32's
+ * TLS block follows the 8-byte TCB at the thread pointer, rounded up to the
+ * segment's alignment (libnx32's getTlsStartOffset). */
+typedef struct {
+    unsigned long module;
+    unsigned long offset;
+} tls_index;
+
+extern const unsigned int __tls_align; /* switch32.ld: the segment's alignment */
+void *__aeabi_read_tp(void);
+
+void *__tls_get_addr(tls_index *ti) {
+    const unsigned int start = __tls_align > 8 ? __tls_align : 8;
+    return (char *)__aeabi_read_tp() + start + ti->offset;
+}
+#endif
 
 /* DRM syncobj compatibility symbol for builds without DRM. */
 int vk_drm_syncobj_copy_payloads(void *device, unsigned int wait_count, const void *waits, unsigned int signal_count, const void *signals) {
